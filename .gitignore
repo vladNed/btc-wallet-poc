@@ -1,0 +1,11 @@
+# Python stuff
+__pycache__
+.pytest_cache
+*.pyc
+
+# User scripts (my personal interpretation you can change this)
+main.py
+index.py
+
+# Wallets
+*.key
