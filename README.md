@@ -1,4 +1,4 @@
-# btc-wallet-py
+# btc-wallet-poc
 
 ## Abstract
 This project focuses on creating a modern and secure bitcoin wallet library that can be easily used in any python project.
@@ -28,51 +28,18 @@ Install the project
 poetry install
 ```
 
-## Usage
-
-### Wallet address usage
-
-```python
-from btc_wallet import wallet
-
-# Generate a brand new bitcoin wallet
-wallet: wallet.BitcoinWallet = wallet.generate_bitcoin_wallet()
-
-# Print legacy P2PKH address
-print(wallet.p2pkh())
-
-# Print SegWit P2WPKH address
-print(wallet.p2wpkh())
-```
-
-### Transfer
-
-```python
-from btc_wallet import wallet
-
-# Generate a brand new bitcoin wallet
-wallet: wallet.BitcoinWallet = wallet.generate_bitcoin_wallet()
-
-# Create a raw transaction
-raw_transaction = wallet.transfer_raw(
-    to_address="bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
-    amount=1000,
-    prev_txid="f5d8ee39asdasdas...",
-    prev_index=0
-)
-```
 
 ## Features roadmap
 
-- [] Wallet creation
+- [ ] Wallet creation
     - [x] Create a new wallet
-    - [] Load an existing wallet
-- [] Wallet addresses
+    - [ ] Load an existing wallet
+- [ ] Wallet addresses
     - [x] Generate LEGACY addresses
     - [x] Generate SigWit BECH32 addresses
-    - [] Generate Taproot BECH32 addresses
-- [] Transactions
+    - [ ] Generate Taproot BECH32 addresses
+- [ ] Transactions
     - [x] Create a raw transaction
     - [x] Sign a raw transaction
-    - [] Broadcast a raw transaction
-    - [] Wallet balance
+    - [ ] Broadcast a raw transaction
+    - [ ] Wallet balance
