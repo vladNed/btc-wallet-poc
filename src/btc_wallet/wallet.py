@@ -83,11 +83,10 @@ class BitcoinWallet:
         return sig
 
     def send_to(self, address: str, amount: int, network: constants.Network = constants.Network.MAINNET) -> str:
-        self.sync(network)
         utxo_to_spend = []
         amount_to_spend = amount
         for utxo in self.utxos.values():
-            utxo_amount = utxo["amount"] * COIN
+            utxo_amount = int(utxo["amount"] * COIN)
             if utxo_amount >= amount_to_spend:
                 utxo_to_spend.append(utxo)
                 break
@@ -99,8 +98,8 @@ class BitcoinWallet:
             TxOutpoint(
                 txid=txid_to_internal(utxo["txid"]),
                 n=utxo.get("vout", 0).to_bytes(4, "little"),
-                amount=utxo["amount"] * COIN
-                )
+                amount=int(utxo["amount"] * COIN)
+            )
             for utxo in utxo_to_spend
         ]
         hrp = network.get_hrp().value
@@ -108,6 +107,67 @@ class BitcoinWallet:
         if decoded_address is None:
             raise ValueError("Error decoding address")
         script_pub_key = script.CScript([script.OP_0, bytes(decoded_address)])  # type: ignore
+
+        tx = TransactionGenerator(
+            sender=self._get_public_key_commitment(),
+            outpoints=txins,
+            amount=amount,
+            script_pub_key=script_pub_key
+        )
+
+        signatures = []
+        for i, txin in enumerate(txins):
+            tx_to_display = txid_to_display(txin.txid)
+            utxo = self.utxos.get(tx_to_display)
+            if utxo is None:
+                raise ValueError(f"Error getting UTXO: {tx_to_display=}")
+
+            txin_script = binascii.unhexlify(utxo["scriptPubKey"]["hex"])
+            redeem_script = script.CScript()
+            if len(txin_script) == 22:
+                redeem_script = script.CScript([
+                    script.OP_DUP,
+                    script.OP_HASH160,
+                    self._get_public_key_commitment(),
+                    script.OP_EQUALVERIFY,
+                    script.OP_CHECKSIG
+                ])  # type: ignore
+            else:
+                raise NotImplementedError("Only P2PKH scripts are supported")
+
+            sig_hash = tx.get_sig_hash(redeem_script, i, txin.amount)
+            signature = self.sign(sig_hash) + bytes([script.SIGHASH_ALL])
+            signatures.append(signature)
+
+        witnesses = [
+            (signature, self.get_public_key())
+            for signature in signatures
+        ]
+
+        return binascii.hexlify(tx.serialize(witnesses)).decode("ascii")
+
+    def lock_to(self, script_: bytes, amount: int, network: constants.Network = constants.Network.MAINNET) -> str:
+        utxo_to_spend = []
+        amount_to_spend = amount
+        for utxo in self.utxos.values():
+            utxo_amount = int(utxo["amount"] * COIN)
+            if utxo_amount >= amount_to_spend:
+                utxo_to_spend.append(utxo)
+                break
+
+            utxo_to_spend.append(utxo)
+            amount_to_spend -= utxo_amount
+
+        txins = [
+            TxOutpoint(
+                txid=txid_to_internal(utxo["txid"]),
+                n=utxo.get("vout", 0).to_bytes(4, "little"),
+                amount=int(utxo["amount"] * COIN)
+            )
+            for utxo in utxo_to_spend
+        ]
+        script_hash = hashlib.sha256(script_).digest()
+        script_pub_key = script.CScript([script.OP_0, script_hash])  # type: ignore
 
         tx = TransactionGenerator(
             sender=self._get_public_key_commitment(),
